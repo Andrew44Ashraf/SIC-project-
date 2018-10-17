@@ -3,10 +3,11 @@ import random
 import uuid
 from declerations import *
 
+f = open('SIC_input.asm','w')
 
-num_inst = random.randint(5,21)
-num_labels = (int)(num_inst/random.randint(2,6))
-num_variables = (int)(num_inst/random.randint(2,6))
+num_inst = random.randint(5,200)
+num_labels = (int)(num_inst/random.randint(2,num_inst-1))
+num_variables = (int)(num_inst/random.randint(2,num_inst-1))
 variables=[]
 labels=[]
 name_set=set()
@@ -37,12 +38,12 @@ for i in range(0,num_labels):
 code=[]
 
 #Start Program
+prog_name=""
 while(True):
-    s=''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(4))
-    if(checktaken(s)==False):
+    prog_name=''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(4))
+    if(checktaken(prog_name)==False):
         break
-s+= " START 1000"
-code.append(s)
+code.append("COPY START 1000")
 
 
 #instruction generation 
@@ -61,10 +62,10 @@ for i in range(num_inst):
     #print(s)
 
 #assign labels
-random_points=list(range(1,num_inst+1))
+random_points=list(range(2,num_inst+1))
 random.shuffle(random_points)
 random_points=random_points[:num_labels]
-print(random_points)
+
 
 i=0
 for point in random_points:
@@ -77,11 +78,15 @@ for point in random_points:
 for i in range(num_variables):
     s=""
     j=random.randint(0,3)
-    s+=RES_INST[j]+" "+variables[i]+" "+str(random.randint(1,4))
+    s+=variables[i]+" "+RES_INST[j]+" "+str(random.randint(1,2))
     code.append(s)
     #print(s)
 
+code[1]=prog_name+" "+code[1]
+code.append("END "+prog_name)
 #Print out code
+print("Generated code of size: " + str(len(code)))
 for i in code:
-    print (i)
+    f.write(i+'\n')
+
 # To do: -strin
