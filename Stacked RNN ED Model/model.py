@@ -41,12 +41,13 @@ import numpy as np
 from keras.callbacks import ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import CuDNNLSTM
-
+import pickle
 from keras.callbacks import TensorBoard
+from keras.utils import plot_model  
 batch_size = 16# Batch size for training.
 epochs = 200  # Number of epochs to train for.
 latent_dim =256# Latent dimensionality of the encoding space.
-num_samples = 200000  # Number of samples to train on.
+num_samples = 10000  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = 'sic-opcode-shuffled.txt'
 
@@ -89,6 +90,16 @@ input_token_index = dict(
 target_token_index = dict(
     [(char, i) for i, char in enumerate(target_characters)])
 
+
+
+pickle_out=open("input_token_index.pickle","wb")
+pickle.dump(input_token_index,pickle_out)
+pickle_out.close()
+pickle_out=open("target_token_index.pickle","wb")
+pickle.dump(target_token_index,pickle_out)
+pickle_out.close()
+
+
 encoder_input_data = np.zeros(
     (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
     dtype='float32')
@@ -112,23 +123,27 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, num_encoder_tokens))
-encoder0 = CuDNNLSTM(latent_dim, return_sequences=True)(encoder_inputs)
-encoder_final=CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
-encoder_outputs, state_h, state_c = encoder_final(encoder0)
-# We discard `encoder_outputs` and only keep the states.
-encoder_states = [state_h, state_c]
 
+encoder0 = CuDNNLSTM(latent_dim, return_sequences=True,return_state=True,name="encoder0")
+encoder_outputs0,state_h0,state_c0=encoder0(encoder_inputs)
+
+encoder1=CuDNNLSTM(latent_dim, return_sequences=True, return_state=True,name="encoder1")
+encoder_outputs1, state_h1, state_c1 = encoder1(encoder_outputs0)
+
+# We discard `encoder_outputs` and only keep the states.
+encoder_states0 = [state_h0, state_c0]
+encoder_states1 = [state_h1, state_c1]
 # Set up the decoder, using `encoder_states` as initial state.
 decoder_inputs = Input(shape=(None, num_decoder_tokens))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder0 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
+decoder0 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True,name="decoder0")
 decoder_outputs0, _, _ = decoder0(decoder_inputs,
-                                     initial_state=encoder_states)
+                                     initial_state=encoder_states0)
 
-decoder1 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True)
-decoder_outputs1, _, _= decoder1(decoder_outputs0)
+decoder1 = CuDNNLSTM(latent_dim, return_sequences=True, return_state=True,name="decoder1")
+decoder_outputs1, _, _= decoder1(decoder_outputs0,initial_state=encoder_states1)
 
 
 
@@ -147,6 +162,8 @@ callbacks_list = [checkpoint,TensorBoard(log_dir='/tmp/autoencoder')]
 # Run training
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['accuracy'])
 print(model.summary())
+plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
+
 model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
           batch_size=batch_size,
           epochs=epochs,

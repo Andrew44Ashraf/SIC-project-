@@ -57,10 +57,12 @@ from keras.callbacks import ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import CuDNNLSTM
 from keras.models import load_model
+import pickle
+from prettytable import PrettyTable
 batch_size = 64# Batch size for training.
 epochs = 150  # Number of epochs to train for.
 latent_dim = 256# Latent dimensionality of the encoding space.
-num_samples = 400000  # Number of samples to train on.
+num_samples = 1000  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = 'sic-opcode-shuffled.txt'
 
@@ -98,10 +100,24 @@ print('Number of unique output tokens:', num_decoder_tokens)
 print('Max sequence length for inputs:', max_encoder_seq_length)
 print('Max sequence length for outputs:', max_decoder_seq_length)
 
-input_token_index = dict(
-    [(char, i) for i, char in enumerate(input_characters)])
-target_token_index = dict(
-    [(char, i) for i, char in enumerate(target_characters)])
+
+
+#pickle_out=open("input_token_index.pickle","wb")
+#pickle.dump(input_token_index,pickle_out)
+#pickle_out.close()
+#pickle_out=open("target_token_index.pickle","wb")
+#pickle.dump(target_token_index,pickle_out)
+#pickle_out.close()
+
+pickle_in=open("input_token_index.pickle","rb")
+input_token_index=pickle.load(pickle_in)
+pickle_in.close()
+
+pickle_in=open("target_token_index.pickle","rb")
+target_token_index=pickle.load(pickle_in)
+pickle_in.close()
+
+
 
 encoder_input_data = np.zeros(
     (len(input_texts), max_encoder_seq_length, num_encoder_tokens),
@@ -153,6 +169,7 @@ callbacks_list = [checkpoint]
 
 # Run training
 model=load_model('s2s.h5')
+
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['categorical_accuracy'])
 print(model.summary())
 model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
